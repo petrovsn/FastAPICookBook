@@ -1,0 +1,167 @@
+1. Общий датафлоу
+
+                    REQUEST
+                       │
+                       ▼
+                 HTTP Client
+                       │
+                       ▼
+                     TCP
+                       │
+                       ▼
+                 ┌──────────┐
+                 │ Gunicorn │   ← если используется
+                 └────┬─────┘
+                      │
+                Uvicorn worker
+                      │
+                      ▼
+                    ASGI
+                      │
+                      ▼
+              ┌───────────────┐
+              │    FastAPI    │
+              │  (на Starlette)│
+              └───────┬───────┘
+                      │
+                      ▼
+                 Middleware
+                      │
+                      ▼
+                   Router
+                      │
+                      ▼
+                 Dependencies
+                      │
+                      ▼
+                  Endpoint
+                      │
+                      ▼
+              Python object
+                      │
+                      ▼
+             Serialization
+                      │
+                      ▼
+                  Response
+                      │
+                      ▼
+                 Middleware
+                      │
+                      ▼
+                ASGI messages
+                      │
+                      ▼
+                   Uvicorn
+                      │
+                      ▼
+                     TCP
+                      │
+                      ▼
+                 HTTP Client
+
+
+Границы слоев:
+
+              Python world
+────────────────────────────────
+FastAPI
+Starlette
+Middleware
+Router
+Endpoint
+Response
+────────────────────────────────
+              ASGI boundary
+────────────────────────────────
+ASGI messages
+────────────────────────────────
+              Server world
+────────────────────────────────
+Uvicorn
+TCP
+HTTP
+
+Как работает асинхронность:
+
+Uvicorn запускает ASGI-приложение внутри event loop. 
+Async endpoint'ы выполняются конкурентно: coroutine работает до точки await, приостанавливается, если ожидает незавершённую async-операцию, 
+а event loop в это время запускает другие готовые задачи. Когда ожидаемая операция завершается, coroutine снова становится runnable. 
+Блокирующую или CPU-bound работу нельзя просто обернуть в await — её нужно отдельно выносить в thread/process pool или другой 
+worker-механизм.
+
+
+Обработка исключений:
+
+middleware
+   ↓
+ExceptionMiddleware
+   ↓
+router
+   ↓
+endpoint
+   │
+endpoint
+   │
+   └── 💥 Exception
+          ↓
+   exception handler
+          ↓
+      ASGI send()
+          ↓
+       client
+          ↑
+   finally middleware
+
+
+Когда возникает ошибка, она перехватывается exception_handler, который регистрируется 
+
+@app.exception_handler(Exception)
+async def value_error_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": str(exc),
+        },
+    )
+
+то вызывается отправка ответа через ASGI, а midlware на обратном пути игнорируется, там можно сделать
+через finally какое-то логирование, но основную работу делает ASGI send
+
+Нюанс:
+Middleware начинает выполняться раньше exception handler. При исключении call_next() пробрасывает исключение обратно в middleware, 
+поэтому except/finally middleware срабатывают раньше exception_handler. После выхода исключения из middleware Starlette's exception 
+handling layer вызывает зарегистрированный handler и формирует HTTP Response.
+
+
+Ошибки при обработке pydantic - отдельная ветка. 
+
+                    Request
+                       │
+                       ▼
+                  Middleware
+                       │
+                       ▼
+                 FastAPI routing
+                       │
+             ┌─────────┴──────────┐
+             │                    │
+        Validation            Endpoint
+             │                    │
+             ▼                    ▼
+       Pydantic error        Exception
+             │                    │
+             ▼                    ▼
+ RequestValidationError    Exception handler
+             │
+             ▼
+ validation handler
+
+ Они не ловятся ни midlware ни эксепшн хэндлером.
+
+ Проверка полей работает через декоратор @model_validator(mode="...")
+
+ где mode может быть в следующих трех значениях:
+    нужно изменить входные данные → before
+    нужно проверить взаимосвязь полей → after
+    нужно вмешаться в сам процесс валидации/обработку ошибок → wrap
