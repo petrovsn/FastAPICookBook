@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI,Request, Response
 import uvicorn
-from routes.route1 import router_mod1
-from routes.route2 import router_mod2
+from api.routes.route1 import router_mod1
+from api.routes.route2 import router_mod2
 from starlette.responses import JSONResponse
 
 app = FastAPI()
@@ -31,7 +31,6 @@ async def execution_timer(request: Request, call_next):
 
     except Exception as e:
         print("Middlware exception:",e)
-        return Response(status_code=200, content = "All right")
         
     finally:
         stop = time.perf_counter()
@@ -44,5 +43,5 @@ if __name__ == "__main__":
         "main:app",
         host="127.0.0.1",
         port=8000,
-        reload=True,
+        reload=False,
     )
