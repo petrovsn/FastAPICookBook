@@ -67,21 +67,28 @@ class RepoImpl:
 
     async def get_users(self):
         result = await self.session.execute(select(User))
-        return [
-        {
-            "id": row.id,
-            "name": row.name,
-        }
-        for row in result.scalars()
-    ]
+        result_dicts = [row.to_dict() for row in result.scalars()]
+        return result_dicts
 
     async def get_user_by_id(self, user_id):
         user = await self.session.get(User, user_id)
-        return {
-            "id": user.id,
-            "name": user.name,
-            "posts": [{"id": post.id, "text": post.text, "user_id":user.id} for post in user.posts]
-        }
+        result_dict =  user.to_dict()
+        result_dict["posts"] = [post.to_dict() for post in user.posts]
+        return result_dict
+
+    async def create_user(self, user_dto_dict):
+        user = User(**user_dto_dict)
+        self.session.add(user)
+        await self.session.flush()
+        return user.to_dict()
+
+    async def update_user_by_id(self, user_id, user_dto_dict):
+        user = await self.session.get(User, user_id)
+        for key, value in user_dto_dict.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+        await self.session.flush()
+        return user.to_dict()
 
     async def initiate_database(self):
         async with Engine().get().begin() as conn:

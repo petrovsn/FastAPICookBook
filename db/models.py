@@ -10,9 +10,10 @@ from sqlite3 import Connection as SQLite3Connection
 
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy_serializer import SerializerMixin
 
 @as_declarative() 
-class Base(AsyncAttrs): 
+class Base(AsyncAttrs, SerializerMixin): 
     __abstract__ = True
     id = Column(Integer, autoincrement=True, primary_key=True)
 
@@ -35,6 +36,7 @@ class User(Base):
     posts = relationship("Post", 
                          back_populates="user",
                          lazy="selectin")
+    email: Mapped[str] = mapped_column(nullable=True)
 
 class Post(Base): 
     __tablename__ = "posts"

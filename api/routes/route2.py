@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI, Depends, Body
 from core.entities import AuthData
-from api.schemas.schemas import UserOut, UserWithPostsOut
-from core.use_cases import GetUsers, GetUser, InitiateDb
+from api.schemas.schemas import UserOut, UserWithPostsOut, UserPatch
+from core.use_cases import GetUsers, GetUser, InitiateDb, CreateUser, UpdateUser
 from db.repo import DatabaseUnitOfWork
 
 router_mod2 = APIRouter(prefix="/module2", tags=["module2"])
@@ -27,13 +27,17 @@ async def get_users(db_repo = Depends(get_uow_db)) -> list[UserOut]:
     result = await GetUsers(db_repo).execute()
     return result
 
+@router_mod2.post("/users")
+async def post_user(user_patch: UserPatch, db_repo = Depends(get_uow_db)) -> UserOut:
+    result = await CreateUser(db_repo).execute(user_patch.model_dump())
+    return result
+
 @router_mod2.get("/users/{id}")
 async def get_user_with_post(id: int, db_repo = Depends(get_uow_db))  -> UserWithPostsOut:
     result = await GetUser(db_repo).execute(id)
     return result
 
-
-@router_mod2.get("/users/{id}")
-async def put_change_user(id: int, db_repo = Depends(get_uow_db))  -> UserWithPostsOut:
-    result = await GetUser(db_repo).execute(id)
+@router_mod2.put("/users/{id}")
+async def put_change_user(id: int, user_patch: UserPatch, db_repo = Depends(get_uow_db))  -> UserOut:
+    result = await UpdateUser(db_repo).execute(id, user_patch.model_dump())
     return result

@@ -23,3 +23,13 @@ class GetUser(UseCase):
         result:User= await self.repo.get_user_by_id(user_id)
         return result 
 
+class CreateUser(UseCase):
+    async def execute(self, user_patch: dict):
+        result:User= await self.repo.create_user(user_patch)
+        return result 
+
+class UpdateUser(UseCase):
+    async def execute(self, user_id, user_patch: dict):
+        result:User= await self.repo.update_user_by_id(user_id, user_patch)
+        return result 
+
