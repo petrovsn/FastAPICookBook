@@ -1,4 +1,4 @@
-from fastapi import APIRouter, FastAPI, Depends, Body
+from fastapi import APIRouter, FastAPI, Depends, Body, Header
 from core.entities import AuthData
 from api.schemas.schemas import UserOut, UserWithPostsOut, UserPatch
 from core.use_cases import GetUsers, GetUser, InitiateDb, CreateUser, UpdateUser,GetUserByName
@@ -7,13 +7,13 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter
 from pydantic import BaseModel
 from api.assembler.repo import get_uow_db
-from api.security.auth import get_token
+from api.security.auth import get_token, verify_token
 
 router_mod3 = APIRouter(prefix="/module3", tags=["module3"])
 
 
 @router_mod3.post("/login")
-async def login(username: str, db_repo = Depends(get_uow_db)):
+async def post_login(username: str, db_repo = Depends(get_uow_db)):
     user = await GetUserByName(db_repo).execute(username)
     if user is not None:
         token = get_token(user["name"])
@@ -22,3 +22,16 @@ async def login(username: str, db_repo = Depends(get_uow_db)):
             "token_type": "bearer",
         }
     raise Exception("no such user")
+
+
+@router_mod3.get("/verify_token")
+async def get_token_verification(jwt_token: str = Header()):
+    username = verify_token(jwt_token)
+    if username is not None:
+        return {
+            "user_name": username,
+            "token_is_active":True
+        }
+    return {
+                "token_is_active":False
+        }
