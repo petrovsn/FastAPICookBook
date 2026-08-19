@@ -76,6 +76,17 @@ class RepoImpl:
         result_dict["posts"] = [post.to_dict() for post in user.posts]
         return result_dict
 
+    async def get_user_by_filter(self, filters):
+        stmt = select(User)
+        for key, value in filters.items():
+            stmt = stmt.where(getattr(User, key) == value)
+        result = await self.session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if user is not None:
+            return user.to_dict()
+        return None
+    
+
     async def create_user(self, user_dto_dict):
         user = User(**user_dto_dict)
         self.session.add(user)
