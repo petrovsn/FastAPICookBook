@@ -17,7 +17,7 @@ async def auth(auth_data: AuthData = Body(None)):
     return {"auth_success":False}
 
 
-@router_mod2.get("/initiate")
+@router_mod2.post("/initiate")
 async def initiate_db(db_repo = Depends(get_uow_db)):
     result = await InitiateDb(db_repo).execute()
     return result
@@ -27,7 +27,13 @@ async def get_users(db_repo = Depends(get_uow_db)) -> list[UserOut]:
     result = await GetUsers(db_repo).execute()
     return result
 
-@router_mod2.post("/users/{id}")
+@router_mod2.get("/users/{id}")
 async def get_user_with_post(id: int, db_repo = Depends(get_uow_db))  -> UserWithPostsOut:
+    result = await GetUser(db_repo).execute(id)
+    return result
+
+
+@router_mod2.get("/users/{id}")
+async def put_change_user(id: int, db_repo = Depends(get_uow_db))  -> UserWithPostsOut:
     result = await GetUser(db_repo).execute(id)
     return result

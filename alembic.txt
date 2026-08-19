@@ -1,0 +1,7 @@
+python -m alembic init alembic
+python -m alembic revision --autogenerate -m "add slogan"
+python -m alembic current
+python -m alembic upgrade head
+python -m alembic downgrade -1
+python -m alembic init alembic
+python -m alembic downgrade base
