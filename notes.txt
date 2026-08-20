@@ -182,3 +182,31 @@ Http не исключается одним CRUD.
 | `OPTIONS` | узнать, какие операции/опции доступны   |
 | `TRACE`   | диагностический HTTP-запрос             |
 | `CONNECT` | установить туннель, например HTTP proxy |
+
+
+Про Кэширование
+@cache / @lru_cache
+    ↓
+кэш функции
+    ↓
+обычно глобальный / межзапросный
+    ↓
+async напрямую — нет
+
+
+Depends(...)
+    ↓
+кэш dependency
+    ↓
+только текущий HTTP request
+    ↓
+async — да
+    ↓
+только внутри FastAPI dependency graph
+
+Про request.state
+`request.state` — это встроенное в Starlette/FastAPI **хранилище произвольных данных, привязанное к 
+конкретному HTTP-запросу**: middleware, dependencies и endpoint могут записывать туда значения 
+(`request.state.user = user`) и читать их позже; данные живут только в рамках этого request и не 
+являются глобальным кэшем, поэтому `request.state` удобно использовать, например, для ручного 
+request-local кэширования результата `get_current_user`, чтобы повторно не обращаться к БД.

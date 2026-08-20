@@ -3,6 +3,7 @@ import uvicorn
 from api.routes.route1 import router_mod1
 from api.routes.route2 import router_mod2
 from api.routes.route3 import router_mod3
+from api.routes.route4 import router_mod4
 from starlette.responses import JSONResponse
 
 app = FastAPI()
@@ -10,6 +11,7 @@ app = FastAPI()
 app.include_router(router_mod1)
 app.include_router(router_mod2)
 app.include_router(router_mod3)
+app.include_router(router_mod4)
 
 @app.exception_handler(Exception)
 async def value_error_handler(request: Request, exc: Exception):

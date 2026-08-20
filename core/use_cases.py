@@ -35,6 +35,28 @@ class CreateUser(UseCase):
 
 class UpdateUser(UseCase):
     async def execute(self, user_id, user_patch: dict):
-        result:User= await self.repo.update_user_by_id(user_id, user_patch)
+        result = await self.repo.update_user_by_id(user_id, user_patch)
         return result 
 
+class TransferMoneyCase(UseCase):
+    async def execute(self, from_user_id: int, to_user_id: int, amount: int):
+        from_user_dto = await self.repo.get_user_by_id(from_user_id)
+        if from_user_dto is None:
+            raise Exception("no sender user")
+        to_user_dto = await self.repo.get_user_by_id(to_user_id)
+        if to_user_dto is None:
+            raise Exception("no receiver user")
+
+        if from_user_dto["money"]<amount:
+            raise Exception("not enough money")
+
+        new_from_user = await self.repo.update_user_by_id(from_user_id, {"money":from_user_dto["money"]-amount})
+        new_to_user = await self.repo.update_user_by_id(to_user_id, {"money":to_user_dto["money"]+amount})
+        return {
+            "new_from_user":new_from_user,
+            "new_to_user": new_to_user
+        }
+        
+        
+
+        

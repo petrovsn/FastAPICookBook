@@ -37,6 +37,7 @@ class User(Base):
                          back_populates="user",
                          lazy="selectin")
     email: Mapped[str] = mapped_column(nullable=True)
+    money: Mapped[int] = mapped_column(nullable=False, default=0)
 
 class Post(Base): 
     __tablename__ = "posts"
