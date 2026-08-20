@@ -32,8 +32,13 @@ async def initiate_database(engine):
             await session.flush()
         await session.commit()
 
-def initiate_engine(filename = ":memory:", echo = True):
-    engine = create_async_engine(f"sqlite+aiosqlite:///{filename}", echo=echo, future=True)
+def initiate_engine(filename = ":memory:", echo = False):
+    #engine = create_async_engine(f"sqlite+aiosqlite:///{filename}", echo=echo, future=True)
+
+    engine = create_async_engine(
+    "postgresql+asyncpg://postgres:12345@localhost:5432/FastapiCookBookDb",
+    echo=echo, future=True
+)
     return engine
 
 class Engine(metaclass = SingletonMeta):
@@ -65,13 +70,21 @@ class RepoImpl:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_users(self):
-        result = await self.session.execute(select(User))
+    async def get_users(self, offset = None, limit = None):
+        stmt = select(User)
+
+        if offset is not None:
+            stmt = stmt.offset(offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+
+        result = await self.session.execute(stmt)
+
         result_dicts = [row.to_dict() for row in result.scalars()]
         return result_dicts
 
-    async def get_user_by_id(self, user_id):
-        user = await self.session.get(User, user_id)
+    async def get_user_by_id(self, user_id, for_update = False):
+        user = await self.session.get(User, user_id, with_for_update= for_update)
         result_dict =  user.to_dict()
         result_dict["posts"] = [post.to_dict() for post in user.posts]
         return result_dict
@@ -101,6 +114,44 @@ class RepoImpl:
         await self.session.flush()
         return user.to_dict()
 
+    async def create_post(self, post_dto_dict):
+        post = Post(**post_dto_dict)
+        self.session.add(post)
+        await self.session.flush()
+        return post.to_dict()
+
+    async def create_posts(self, posts_list: list[dict]):
+        stmt = insert(Post)
+        result = await self.session.execute(stmt, posts_list)
+        return True
+
+    async def get_posts(self, offset = None, limit = None):
+        stmt = select(Post)
+
+        if offset is not None:
+            stmt = stmt.offset(offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+
+        result = await self.session.execute(stmt)
+
+        result_dicts = [row.to_dict() for row in result.scalars()]
+        return result_dicts
+
+    async def get_posts_cursored(self, offset = None, limit = None):
+        stmt = select(Post).order_by(Post.id)
+
+        if offset is not None:
+            stmt = stmt.where(Post.id>offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+
+        result = await self.session.execute(stmt)
+
+        result_dicts = [row.to_dict() for row in result.scalars()]
+        return result_dicts
+    
+
     async def initiate_database(self):
         async with Engine().get().begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -112,3 +163,4 @@ class RepoImpl:
             user = await self.session.get(User, random_user_id)
             user.posts.append(Post(text = post))
             await self.session.flush()
+

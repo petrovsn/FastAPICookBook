@@ -15,11 +15,6 @@ class UserPatch(BaseModel):
     name: str | None = None
     money: int | None = None
 
-    @model_validator(mode="after")
-    def check_passwords(self):
-        if (self.email == self.name == None):
-            raise ValueError("no no-None data")
-
 class MoneyTransferRequest(BaseModel):
     from_user_id: int
     to_user_id: int
@@ -33,3 +28,6 @@ class MoneyTransferRequest(BaseModel):
         return value
 
 
+class PaginationRequest(BaseModel):
+    offset: int | None = None
+    limit: int | None = None

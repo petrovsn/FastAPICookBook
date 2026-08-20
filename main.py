@@ -30,6 +30,7 @@ async def execution_timer(request: Request, call_next):
     stop = time.perf_counter()
     delta = stop - start
     response.headers["X-Execution-Time"] = f"{delta}"
+    print(f"Execution time for {request.url}: {delta} sec")
     return response  
 
 if __name__ == "__main__":

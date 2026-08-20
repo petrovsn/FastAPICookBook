@@ -1,6 +1,6 @@
 from fastapi import APIRouter, FastAPI, Depends, Body, Header
 from core.entities import AuthData
-from api.schemas.schemas import UserOut, UserWithPostsOut, UserPatch
+from api.schemas.schemas import UserOut, UserWithPostsOut, UserPatch, PaginationRequest
 from core.use_cases import GetUsers, GetUser, InitiateDb, CreateUser, UpdateUser,GetUserByName
 from db.repo import DatabaseUnitOfWork
 from datetime import datetime, timedelta, timezone
@@ -79,3 +79,26 @@ async def get_token_verification3(user_dto = Depends(get_user_dto_from_auth_sche
     return {
                 "token_is_active":False
         }
+
+
+async def get_user_dto(id:int, db_repo = Depends(get_uow_db)):
+    user_dto = await GetUser(db_repo).execute(id)
+    return user_dto
+
+@router_mod3.get("/users/{id}")
+async def get_user_dto_depends_injection(user_dto = Depends(get_user_dto)):
+    return user_dto
+
+
+
+async def get_users_with_pagination_dep(
+        offset: int = Header(0),
+        limit: int = Header(10),
+        db_repo = Depends(get_uow_db)):
+    user_dto = await GetUsers(db_repo).execute(offset, limit)
+    return user_dto
+
+
+@router_mod3.get("/users")
+async def get_users_pagination(user_dtos = Depends(get_users_with_pagination_dep)):
+    return user_dtos
